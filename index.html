@@ -14,8 +14,8 @@
   <svg id="map" role="img" aria-label="Railway schematic" preserveAspectRatio="xMidYMid meet"></svg>
 </div>
 
-<!-- Model + filters -->
-<section class="card brand" aria-label="Model and filters">
+<!-- Left panel: model, filter, active trains -->
+<aside id="panel" class="card panel" aria-label="Model and active trains">
   <div class="brand-row">
     <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 17h18M7 7l10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>
     <div class="brand-text">
@@ -25,18 +25,25 @@
     <button id="openBtn" class="icon-btn" type="button" title="Open another model" aria-label="Open another model">
       <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
     </button>
+    <button id="collapseBtn" class="icon-btn" type="button" title="Hide train list" aria-label="Hide train list" aria-expanded="true" hidden>
+      <svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+    </button>
   </div>
-  <div id="filters" class="filters" hidden>
+  <div id="panelBody" class="panel-body" hidden>
     <div id="scope" class="seg" role="group" aria-label="Trains">
       <button type="button" data-v="all" aria-pressed="true">All</button>
       <button type="button" data-v="via" aria-pressed="false"><i class="dot via"></i>VIA</button>
       <button type="button" data-v="freight" aria-pressed="false"><i class="dot frt"></i>Freight</button>
     </div>
-    <label class="select"><span class="sr">Subdivision</span>
-      <select id="area" aria-label="Subdivision"><option value="all">Entire model</option></select>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <input id="search" type="search" placeholder="Find train" aria-label="Find train" autocomplete="off" spellcheck="false">
     </label>
+    <div class="list-head"><span>Active trains</span><b id="activeCount">0</b></div>
+    <ul id="trainList" class="train-list" aria-label="Active trains"></ul>
+    <p id="listEmpty" class="list-empty" hidden>No trains running at this time</p>
   </div>
-</section>
+</aside>
 
 <!-- Map controls -->
 <nav class="controls" aria-label="Map controls">
@@ -72,10 +79,10 @@
     <dt><kbd>F</kbd></dt><dd>Fit network</dd>
     <dt><kbd>Esc</kbd></dt><dd>Clear selection</dd>
   </dl>
-  <p class="foot">Positions between recorded nodes are interpolated. Files are read in this browser only.</p>
+  <p class="foot">Times are Eastern (UTC−5). Positions between recorded nodes are interpolated. Files are read in this browser only.</p>
 </aside>
 
-<!-- Empty state -->
+<!-- Open model -->
 <section id="empty" class="card empty">
   <button id="emptyClose" class="icon-btn sm empty-close" type="button" title="Close" aria-label="Close" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div class="drop-art" aria-hidden="true">
@@ -139,7 +146,6 @@
 </section>
 
 <div id="tip" class="tip" hidden></div>
-<div id="toast" class="toast" role="alert" hidden></div>
 
 <input id="files" type="file" multiple accept=".node,.link,.history,.route" hidden>
 </body>
