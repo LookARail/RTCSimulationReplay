@@ -22,7 +22,7 @@
       <h1>Schematic Replay</h1>
       <p id="modelName">No model loaded</p>
     </div>
-    <button id="openBtn" class="icon-btn" type="button" title="Open model folder" aria-label="Open model folder">
+    <button id="openBtn" class="icon-btn" type="button" title="Open another model" aria-label="Open another model">
       <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
     </button>
   </div>
@@ -72,20 +72,30 @@
     <dt><kbd>F</kbd></dt><dd>Fit network</dd>
     <dt><kbd>Esc</kbd></dt><dd>Clear selection</dd>
   </dl>
-  <p class="foot">Positions between recorded nodes are interpolated. Files are read in this browser only. <button id="openFiles" class="link" type="button">Open individual files…</button></p>
+  <p class="foot">Positions between recorded nodes are interpolated. Files are read in this browser only.</p>
 </aside>
 
 <!-- Empty state -->
 <section id="empty" class="card empty">
+  <button id="emptyClose" class="icon-btn sm empty-close" type="button" title="Close" aria-label="Close" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div class="drop-art" aria-hidden="true">
     <svg viewBox="0 0 120 48"><path d="M4 16h112M4 32h112M30 16l24 16M66 32l24-16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="42" cy="16" r="5" class="a"/><circle cx="88" cy="32" r="5" class="b"/></svg>
   </div>
   <h2>Open an RTC model</h2>
-  <p>Drop a folder with matching <b>.NODE</b> <b>.LINK</b> <b>.HISTORY</b> <b>.ROUTE</b> files</p>
+  <p>Drag the model folder here, or select its four files</p>
+  <ul id="slots" class="slots" aria-label="Model files">
+    <li data-ext="NODE"><i></i>.NODE</li>
+    <li data-ext="LINK"><i></i>.LINK</li>
+    <li data-ext="HISTORY"><i></i>.HISTORY</li>
+    <li data-ext="ROUTE"><i></i>.ROUTE</li>
+  </ul>
   <div class="empty-actions">
-    <button id="pickFolder" class="btn primary" type="button">Choose folder</button>
-    <button id="pickFiles" class="btn" type="button">Choose files</button>
+    <button id="pickFiles" class="btn primary" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
+      Select model files
+    </button>
   </div>
+  <p class="hint">In the dialog, press <kbd>Ctrl</kbd> <kbd>A</kbd> to pick all four at once</p>
   <p id="loadStatus" class="load-status" role="status"></p>
 </section>
 
@@ -131,7 +141,6 @@
 <div id="tip" class="tip" hidden></div>
 <div id="toast" class="toast" role="alert" hidden></div>
 
-<input id="folder" type="file" webkitdirectory directory multiple hidden>
-<input id="files" type="file" multiple hidden>
+<input id="files" type="file" multiple accept=".node,.link,.history,.route" hidden>
 </body>
 </html>

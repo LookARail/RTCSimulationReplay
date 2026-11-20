@@ -183,7 +183,32 @@ async function filesFromDrop(dt){
   }
   for(const e of entries)await walk(e);return out;
 }
-function setLoadStatus(msg,busy){const s=$('#loadStatus');s.textContent=msg;s.classList.toggle('busy',!!busy);if(model)$('#modelName').textContent=busy?msg:model.name}
+/* File slots: files can arrive in one go (drop folder / select all) or a few at a time. */
+const EXTS=['NODE','LINK','HISTORY','ROUTE'];let pending=new Map(),pendingBase=null;
+function showOpen(open){
+  const empty=$('#empty');empty.hidden=!open;$('#emptyClose').hidden=!model;
+  if(open){pending=new Map();pendingBase=null;updateSlots();setLoadStatus('',false)}
+}
+function updateSlots(missing=false){
+  for(const li of $$('#slots li')){const ok=pending.has(li.dataset.ext);li.classList.toggle('ok',ok);li.classList.toggle('miss',missing&&!ok);li.title=ok?pending.get(li.dataset.ext).name:''}
+}
+function addFiles(files){
+  if(loading)return;
+  const parsed=files.map(f=>{const m=f.name.match(/^(.*)\.(NODE|LINK|HISTORY|ROUTE)$/i);return m&&{file:f,base:m[1].toUpperCase(),ext:m[2].toUpperCase()}}).filter(Boolean);
+  if(!parsed.length){setLoadStatus('No .NODE, .LINK, .HISTORY or .ROUTE files found',false,true);updateSlots(true);return}
+  const bases=new Set(parsed.map(p=>p.base));
+  // A full set arrived at once (e.g. a dropped folder): let the loader pick and validate it.
+  if([...bases].some(b=>EXTS.every(x=>parsed.some(p=>p.base===b&&p.ext===x)))){
+    pending=new Map(parsed.filter(p=>p.base===parsed[0].base).map(p=>[p.ext,p.file]));updateSlots();void loadFiles(files);return;
+  }
+  if(bases.size>1){setLoadStatus('These files come from different models',false,true);return}
+  const base=parsed[0].base;if(base!==pendingBase){pending=new Map();pendingBase=base}
+  for(const p of parsed)pending.set(p.ext,p.file);updateSlots();
+  const missing=EXTS.filter(x=>!pending.has(x));
+  if(!missing.length){void loadFiles([...pending.values()]);return}
+  setLoadStatus('Still need '+missing.map(x=>'.'+x).join(', '),false);updateSlots(true);
+}
+function setLoadStatus(msg,busy,err){const s=$('#loadStatus');s.textContent=msg;s.classList.toggle('busy',!!busy);s.classList.toggle('err',!!err);if(msg&&!busy&&$('#empty').hidden){$('#empty').hidden=false;$('#emptyClose').hidden=!model}if(model)$('#modelName').textContent=busy?msg:model.name}
 async function loadFiles(files){
   if(!files.length||loading)return;loading=true;setLoadStatus('Reading model…',true);
   try{
@@ -202,7 +227,7 @@ async function loadFiles(files){
     $('#modelName').textContent=model.name;$('#modelName').title=model.name;
     fillInfo();setLoadStatus('',false);computeDensity();drawNetwork();
   }catch(error){
-    setLoadStatus(model?'':'Could not load model',false);toast('Could not load model — '+error.message);
+    setLoadStatus(error.message,false,true);
   }finally{loading=false}
 }
 function fillInfo(){
@@ -225,11 +250,10 @@ function tick(now){
 }
 
 /* ---------- events ---------- */
-$('#openBtn').addEventListener('click',()=>$('#folder').click());
-$('#pickFolder').addEventListener('click',()=>$('#folder').click());
+$('#openBtn').addEventListener('click',()=>showOpen(true));
 $('#pickFiles').addEventListener('click',()=>$('#files').click());
-$('#openFiles').addEventListener('click',()=>$('#files').click());
-for(const id of ['#folder','#files'])$(id).addEventListener('change',e=>{const files=[...e.target.files];e.target.value='';void loadFiles(files)});
+$('#emptyClose').addEventListener('click',()=>showOpen(false));
+$('#files').addEventListener('change',e=>{const files=[...e.target.files];e.target.value='';addFiles(files)});
 
 $('#scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;scope=b.dataset.v;setPressed($('#scope'),scope);if(model){computeDensity();render()}});
 $('#speed').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;speed=Number(b.dataset.v);setPressed($('#speed'),speed)});
@@ -282,7 +306,7 @@ let dragDepth=0;
 addEventListener('dragenter',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){dragDepth++;document.body.classList.add('dropping')}});
 addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;document.body.classList.remove('dropping')}});
 addEventListener('dragover',e=>e.preventDefault());
-addEventListener('drop',async e=>{e.preventDefault();dragDepth=0;document.body.classList.remove('dropping');if(e.dataTransfer)void loadFiles(await filesFromDrop(e.dataTransfer))});
+addEventListener('drop',async e=>{e.preventDefault();dragDepth=0;document.body.classList.remove('dropping');if(e.dataTransfer)addFiles(await filesFromDrop(e.dataTransfer))});
 
 /* keyboard */
 addEventListener('keydown',e=>{
