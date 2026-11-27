@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Schematic Replay</title>
 <link rel="stylesheet" href="replay.css">
+<link rel="stylesheet" href="stringline.css">
 <script defer src="model-loader.js"></script>
 <script defer src="replay.js"></script>
+<script defer src="stringline.js"></script>
 </head>
 <body>
 
@@ -55,6 +57,9 @@
     <button id="fit" class="icon-btn" type="button" title="Fit network (F)" aria-label="Fit network"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button id="infoBtn" class="icon-btn" type="button" title="Legend and model details" aria-label="Legend and model details" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
   </div>
+  <div class="card ctl-group">
+    <button id="stringlineBtn" class="icon-btn" type="button" title="Stringline (S)" aria-label="Show stringline" aria-pressed="false" disabled><svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M7 16l4-8M11 16l5-10M15 16l4-6"/></svg></button>
+  </div>
 </nav>
 
 <!-- Legend / details -->
@@ -66,6 +71,7 @@
     <li><i class="dot via"></i>VIA</li>
     <li><i class="dot frt"></i>Freight / other</li>
     <li><i class="ln route"></i>Selected train path</li>
+    <li><i class="ln corridor"></i>Stringline corridor</li>
   </ul>
   <div id="modelInfo" hidden>
     <h2>Model</h2>
@@ -77,6 +83,7 @@
     <dt><kbd>Space</kbd></dt><dd>Play / pause</dd>
     <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Step 1 min (<kbd>Shift</kbd> 10 min)</dd>
     <dt><kbd>F</kbd></dt><dd>Fit network</dd>
+    <dt><kbd>S</kbd></dt><dd>Show / hide stringline</dd>
     <dt><kbd>Esc</kbd></dt><dd>Clear selection</dd>
   </dl>
   <p class="foot">Times are Eastern (UTC−5). Positions between recorded nodes are interpolated. Files are read in this browser only.</p>
@@ -146,6 +153,26 @@
 </section>
 
 <div id="tip" class="tip" hidden></div>
+
+<!-- Stringline (time–distance), docked to the right of the map -->
+<section id="stringline" class="card sl-pane" hidden aria-label="Stringline">
+  <div id="slResize" class="sl-resize" title="Drag to resize" aria-hidden="true"></div>
+  <header class="sl-head">
+    <h2>Stringline</h2>
+    <span id="slMeta" class="sl-meta"></span>
+    <button id="slFitAll" class="icon-btn sm" type="button" title="Show full period and range (double-click chart)" aria-label="Show full period and range"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="slClose" class="icon-btn sm" type="button" title="Close (S)" aria-label="Close stringline"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </header>
+  <div class="sl-range">
+    <label class="sl-select"><span>From</span><select id="slFrom" aria-label="From location"></select></label>
+    <button id="slSwap" class="icon-btn sm" type="button" title="Reverse direction" aria-label="Reverse direction"><svg viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg></button>
+    <label class="sl-select"><span>To</span><select id="slTo" aria-label="To location"></select></label>
+  </div>
+  <div class="sl-chart">
+    <svg id="slSvg" role="img" aria-label="Time–distance diagram"></svg>
+    <p id="slEmpty" class="sl-empty" hidden>No train movements in this range</p>
+  </div>
+</section>
 
 <input id="files" type="file" multiple accept=".node,.link,.history,.route" hidden>
 </body>

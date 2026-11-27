@@ -16,7 +16,8 @@
       if(byId.has(id))throw Error('Duplicate NODE identifier: '+id);
       const a=line.slice(241,251).trim(),b=line.slice(252,262).trim(),x=Number(a),y=-Number(b);
       if(!a||!b||!Number.isFinite(x)||!Number.isFinite(y))throw Error('Missing or invalid schematic coordinates for node '+id+'.');
-      const n={id,name:line.slice(16,32).trim(),subdivision:line.slice(674,694).trim(),x,y};list.push(n);byId.set(id,n);
+      const markerText=line.slice(79,89).trim(), marker=markerText!==''&&Number.isFinite(Number(markerText))?Number(markerText):null;
+      const n={id,name:line.slice(16,32).trim(),subdivision:line.slice(674,694).trim(),fieldMarker:marker,x,y};list.push(n);byId.set(id,n);
     }
     if(!list.length)throw Error('No NODE records found. This prototype expects the RTC fixed-width NODE format.');return {list,byId};
   }

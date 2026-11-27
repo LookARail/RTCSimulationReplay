@@ -1,0 +1,72 @@
+/* Stringline pane, docked to the right of the map, above the replay dock. */
+:root{--sl-w:clamp(400px,42vw,860px);--dock-h:60px;--sl-gridline:color-mix(in srgb,var(--text) 7%,transparent);--sl-gridline-strong:color-mix(in srgb,var(--text) 15%,transparent)}
+
+.sl-pane{top:16px;right:16px;bottom:calc(var(--dock-h) + 28px);width:var(--sl-w);display:flex;flex-direction:column;padding:10px 12px 6px;background:color-mix(in srgb,var(--surface-solid) 96%,transparent)}
+body.sl-open .controls{right:calc(var(--sl-w) + 28px)}
+body.sl-open .info{right:calc(var(--sl-w) + 84px)}
+
+.sl-resize{position:absolute;left:-6px;top:14px;bottom:14px;width:12px;cursor:ew-resize;touch-action:none}
+.sl-resize::after{content:"";position:absolute;left:5px;top:50%;width:2px;height:36px;margin-top:-18px;border-radius:2px;background:var(--border);transition:background .15s}
+.sl-resize:hover::after,.sl-resize.active::after{background:var(--accent)}
+
+.sl-head{display:flex;align-items:center;gap:8px;min-width:0}
+.sl-head h2{margin:0 4px 0 2px;font-size:14px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+.sl-meta{margin-left:auto;font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sl-select{display:flex;align-items:center;gap:6px;min-width:0;background:var(--hover);border-radius:9px;padding:0 8px 0 10px}
+.sl-select span{font-size:11px;font-weight:650;color:var(--muted)}
+.sl-select select{min-width:0;flex:1;appearance:none;-webkit-appearance:none;border:0;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364778a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0 center/13px;padding:6px 18px 6px 0;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;text-overflow:ellipsis}
+.sl-select:focus-within{box-shadow:0 0 0 2px var(--accent)}
+.sl-select select option{background:var(--surface-solid);color:var(--text)}
+.sl-range{display:flex;align-items:center;gap:6px;margin-top:8px}
+.sl-range .sl-select{flex:1}
+
+.sl-chart{position:relative;flex:1;min-height:0;margin-top:6px}
+#slSvg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
+#slSvg.dragging{cursor:grabbing}
+#slSvg text{font-family:var(--font)}
+.sl-empty{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:var(--muted);font-size:12.5px;pointer-events:none}
+
+.sl-grid line{stroke:var(--sl-gridline);stroke-width:1;shape-rendering:crispEdges}
+.sl-grid line.stn,.sl-grid line.day{stroke:var(--sl-gridline-strong)}
+.sl-grid .frame{fill:none;stroke:var(--sl-gridline-strong);shape-rendering:crispEdges}
+.sl-axis text{font-size:10.5px;fill:var(--muted)}
+.sl-axis text.stn{fill:var(--text);font-weight:650}
+.sl-axis text.mp{font-size:10px;font-variant-numeric:tabular-nums;opacity:.75}
+.sl-axis text.day{fill:var(--text);font-weight:700}
+
+.sl-lines path{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:.85;transition:opacity .12s}
+.sl-lines .via{stroke:var(--via)}.sl-lines .frt{stroke:var(--frt)}
+.has-sel .sl-lines path{opacity:.5}
+.has-sel .sl-labels text.via,.has-sel .sl-labels text.frt{opacity:.55}
+.sl-lines path.hover{stroke-width:2.6;opacity:1}
+.sl-lines path.sel{stroke:var(--sel);stroke-width:3;opacity:1}
+.sl-grid line.bound{stroke:var(--muted);stroke-dasharray:4 3;opacity:.6}
+.sl-labels{pointer-events:none}
+.sl-labels text{font-size:10px;font-weight:650;stroke:var(--surface-solid);stroke-width:3px;paint-order:stroke;stroke-linejoin:round}
+.sl-labels text.via{fill:var(--via)}.sl-labels text.frt{fill:var(--frt)}
+.sl-labels text.hover{opacity:1;font-weight:800}
+.sl-labels text.sel{fill:var(--text);font-weight:800;font-size:11px;opacity:1}
+.sl-labels text.sub{fill:var(--muted);font-size:9.5px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+.sl-hit path{fill:none;stroke:transparent;stroke-width:10;pointer-events:stroke;cursor:pointer}
+.sl-now{pointer-events:none}
+.sl-now line{stroke:var(--text);stroke-width:1.5;opacity:.55}
+.sl-now circle{stroke:var(--surface-solid);stroke-width:1.5}
+.sl-now .via{fill:var(--via)}.sl-now .frt{fill:var(--frt)}
+.sl-now .sel{fill:var(--sel)}
+.sl-now .hover{stroke:var(--text);stroke-width:2}
+
+/* Map feedback: the stringline's corridor is underlaid on the network; hovered train is ringed. */
+.corridor{opacity:.2}
+.corridor line{stroke:var(--accent);stroke-width:calc(var(--tw) * 3 + 6px);vector-effect:non-scaling-stroke;stroke-linecap:round}
+.train.hover .dot{stroke:var(--text);stroke-width:2.5}
+.train.hover text{font-weight:800}
+.ln.corridor{background:var(--accent);opacity:.35;height:7px}
+
+@media (max-width:860px){
+  .sl-pane{left:16px;right:16px;width:auto;top:auto;height:44vh}
+  body.sl-open .controls{right:16px}
+  body.sl-open .info{right:16px}
+  body.sl-open .train-card{display:none}
+  .sl-resize{display:none}
+  .sl-head h2{display:none}
+}

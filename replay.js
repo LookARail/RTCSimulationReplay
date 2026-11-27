@@ -3,9 +3,10 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],NS=
 const GRID=28,MIN_ZOOM=1/400,MAX_ZOOM=6;
 const TZ_OFFSET=-5*3600; // RTC times are UTC; display as Eastern (fixed UTC−5, no daylight saving)
 let model=null,view=null,fitUpp=1,lastW=0,zs=0,selected=null,follow=false,playing=false,lastFrame=0,playbackTime=0,drag=null,loading=false;
-let scope='all',speed=300,tMin=0,tMax=1,density=null,labels=[],routePath='',colors={},panelOpen=true,listKey='',rows=new Map();
-const trackLayer=svg('g',{class:'tracks'}),labelLayer=svg('g',{class:'labels'}),highlightLayer=svg('g'),trainLayer=svg('g');
-map.append(trackLayer,labelLayer,highlightLayer,trainLayer);
+let hovered=null,scope='all',speed=300,tMin=0,tMax=1,density=null,labels=[],routePath='',colors={},panelOpen=true,listKey='',rows=new Map();
+const corridorLayer=svg('g',{class:'corridor'}),trackLayer=svg('g',{class:'tracks'}),labelLayer=svg('g',{class:'labels'}),highlightLayer=svg('g'),trainLayer=svg('g');
+map.append(corridorLayer,trackLayer,labelLayer,highlightLayer,trainLayer);
+const STATION_RE=/\bvia\b|\bstation\b|\bgare\b/i; // node names treated as stations (bolder labels)
 
 /* ---------- helpers ---------- */
 function svg(tag,attrs={}){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e}
@@ -37,10 +38,11 @@ const textScale=()=>clamp(1+.08*zs,1,1.5);
 const markerScale=()=>clamp(1+.14*zs,.9,1.9);
 /* Map area not covered by floating UI, in screen px. */
 function insets(){
-  const W=map.clientWidth,H=map.clientHeight,ins={left:32,top:32,right:72,bottom:32},p=$('#panel').getBoundingClientRect(),d=$('#dock');
+  const W=map.clientWidth,H=map.clientHeight,ins={left:32,top:32,right:W-$('.controls').getBoundingClientRect().left+16,bottom:32},p=$('#panel').getBoundingClientRect(),d=$('#dock'),sl=$('#stringline');
   if(isNarrow())ins.top=p.bottom+16;else if(panelOpen&&model)ins.left=p.right+24;else ins.top=Math.max(ins.top,p.bottom+16);
   if(!d.hidden)ins.bottom=H-d.getBoundingClientRect().top+16;
   if(!$('#trainCard').hidden&&isNarrow())ins.bottom=H-$('#trainCard').getBoundingClientRect().top+16;
+  if(!sl.hidden&&isNarrow())ins.bottom=H-sl.getBoundingClientRect().top+16;
   ins.left=Math.min(ins.left,W-120);ins.top=Math.min(ins.top,H-120);return ins;
 }
 function fitBounds(a,b,c,d,minSpan=0){
@@ -70,7 +72,7 @@ function drawNetwork(){
   }
   trackLayer.append(frag);
   const named=new Set(),major=[],minor=[];
-  for(const n of model.nodes.list){if(!n.name)continue;const k=n.name.toUpperCase();if(named.has(k))continue;named.add(k);(/\bvia\b|\bstation\b|\bgare\b/i.test(n.name)?major:minor).push(n)}
+  for(const n of model.nodes.list){if(!n.name)continue;const k=n.name.toUpperCase();if(named.has(k))continue;named.add(k);(STATION_RE.test(n.name)?major:minor).push(n)}
   const lf=document.createDocumentFragment();
   for(const [list,isMajor] of [[major,true],[minor,false]])for(const n of list){
     const t=svg('text',{x:n.x,y:n.y,dy:'-0.9em','text-anchor':'middle',class:isMajor?'stn':'loc'});t.textContent=n.name;tooltip(t,n.id+(n.subdivision?' · '+n.subdivision:''));lf.append(t);
@@ -155,7 +157,7 @@ function render(){
   drawn.reverse();
   const frag=document.createDocumentFragment();
   for(const {train,p,isSel,label} of drawn){
-    const g=svg('g',{transform:`translate(${p.x} ${p.y})`,class:'train '+(train.via?'via':'frt')+(isSel?' sel':''),'data-train':train.symbol});
+    const g=svg('g',{transform:`translate(${p.x} ${p.y})`,class:'train '+(train.via?'via':'frt')+(isSel?' sel':'')+(train.symbol===hovered?' hover':''),'data-train':train.symbol});
     if(isSel)g.append(svg('circle',{r:13*ms*u,class:'halo'}));
     g.append(svg('circle',{r:(isSel?7:5.5)*ms*u,class:'dot'}));
     if(label){const t=svg('text',{x:(isSel?11:9)*ms*u,y:3.8*ts*u,'font-size':(isSel?12:10.5)*ts*u,'stroke-width':3*u});t.textContent=train.symbol;g.append(t)}
@@ -167,6 +169,7 @@ function render(){
   const m=$('#countMissing');m.hidden=!missing;m.querySelector('b').textContent=missing;m.title=missing+' active train'+(missing===1?'':'s')+' between nodes with no direct link (not drawn)';
   $('#countVia').hidden=scope==='freight';$('#countFrt').hidden=scope==='via';
   updateList(active);updateCard(sel,time);drawDensity(time);
+  Stringline.sync(time);
 }
 
 /* ---------- active train list (rows are reused so clicks and hover survive playback) ---------- */
@@ -264,7 +267,7 @@ async function loadFiles(files){
   try{
     await new Promise(r=>setTimeout(r,20));
     const loaded=await window.RTCModelLoader.load(files,msg=>setLoadStatus(msg.replace(/…$/,'')+'…',true));
-    if(playing)togglePlay();model=loaded;selected=null;follow=false;routePath='';listKey='';rows=new Map();
+    if(playing)togglePlay();model=loaded;selected=null;hovered=null;follow=false;routePath='';listKey='';rows=new Map();
     model.trainBySymbol=new Map(model.history.trains.map(t=>[t.symbol,t]));
     tMin=Infinity;tMax=-Infinity;for(const t of model.history.trains)for(const e of t.events){tMin=Math.min(tMin,e.arrival);tMax=Math.max(tMax,e.departure)}
     tMin=Math.floor(tMin);tMax=Math.ceil(tMax);
@@ -272,7 +275,7 @@ async function loadFiles(files){
     $('#start').textContent=formatTime(tMin);$('#end').textContent=formatTime(tMax);
     $('#empty').hidden=true;$('#dock').hidden=false;$('#modelInfo').hidden=false;$('#collapseBtn').hidden=false;
     $('#modelName').textContent=model.name;$('#modelName').title=model.name;
-    setPanel(!isNarrow());fillInfo();setLoadStatus('',false);computeDensity();drawNetwork();
+    setPanel(!isNarrow());fillInfo();setLoadStatus('',false);computeDensity();drawNetwork();Stringline.onModel();
   }catch(error){
     setLoadStatus(error.message,false,true);
   }finally{loading=false}
@@ -303,7 +306,7 @@ $('#emptyClose').addEventListener('click',()=>showOpen(false));
 $('#files').addEventListener('change',e=>{const files=[...e.target.files];e.target.value='';addFiles(files)});
 $('#collapseBtn').addEventListener('click',()=>setPanel(!panelOpen));
 
-$('#scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;scope=b.dataset.v;setPressed($('#scope'),scope);if(model){computeDensity();render()}});
+$('#scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;scope=b.dataset.v;setPressed($('#scope'),scope);if(model){computeDensity();Stringline.refresh();render()}});
 $('#speed').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;speed=Number(b.dataset.v);setPressed($('#speed'),speed)});
 $('#search').addEventListener('input',()=>render());
 $('#trainList').addEventListener('click',e=>{const li=e.target.closest('li[data-train]');if(!li)return;if(isNarrow())setPanel(false);focusTrip(li.dataset.train)});
@@ -322,9 +325,11 @@ document.addEventListener('pointerdown',e=>{if(!info.hidden&&!info.contains(e.ta
 
 /* map interaction */
 const tip=$('#tip');
+/* One hovered train is shared by the map and the stringline. */
+function setHover(symbol){if(hovered===symbol)return;hovered=symbol;if(model&&view)render()}
 function showTip(e){
-  const g=e.target.closest&&e.target.closest('[data-train]');if(!g||!model){tip.hidden=true;return}
-  const train=model.trainBySymbol.get(g.dataset.train);
+  const g=e.target.closest&&e.target.closest('[data-train]');if(!g||!model){tip.hidden=true;setHover(null);return}
+  const train=model.trainBySymbol.get(g.dataset.train);setHover(train.symbol);
   tip.innerHTML='<b></b><span></span>';tip.firstChild.textContent=train.symbol;tip.lastChild.textContent=statusText(position(train,currentTime()));
   tip.hidden=false;tip.style.left=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8)+'px';tip.style.top=(e.clientY+14)+'px';
 }
@@ -342,7 +347,7 @@ map.addEventListener('pointermove',e=>{
 });
 map.addEventListener('pointerup',()=>{if(drag&&!drag.moved&&(drag.train||selected))select(drag.train);drag=null;map.classList.remove('dragging')});
 map.addEventListener('pointercancel',()=>{drag=null;map.classList.remove('dragging')});
-map.addEventListener('pointerleave',()=>{tip.hidden=true});
+map.addEventListener('pointerleave',()=>{tip.hidden=true;setHover(null)});
 
 new ResizeObserver(()=>{
   if(!view)return;const W=map.clientWidth,H=map.clientHeight;if(!W||!H)return;
@@ -364,6 +369,7 @@ addEventListener('keydown',e=>{
   if(e.key===' '){e.preventDefault();togglePlay()}
   else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();setTime(currentTime()+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?600:60))}
   else if(e.key==='f'||e.key==='F')fit();
+  else if(e.key==='s'||e.key==='S')Stringline.toggle();
   else if(e.key==='+'||e.key==='=')$('#zoomIn').click();
   else if(e.key==='-'||e.key==='_')$('#zoomOut').click();
 });
